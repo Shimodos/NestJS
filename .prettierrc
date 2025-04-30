@@ -1,4 +1,16 @@
+
 {
+  "endOfLine": "auto",
   "singleQuote": true,
-  "trailingComma": "all"
+  "printWidth": 100,
+  "trailingComma": "none",
+  "overrides": [
+    {
+      "files": "src/**/*.scss",
+      "options": {
+        "singleQuote": false,
+        "tabWidth": 2
+      }
+    }
+  ]
 }
