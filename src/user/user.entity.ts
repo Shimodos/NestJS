@@ -4,6 +4,7 @@ import { hash } from 'bcrypt';
 
 @Entity({ name: 'users' })
 export class UserEntity {
+  [x: string]: any;
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -19,7 +20,7 @@ export class UserEntity {
   @Column({ default: '' })
   image: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @BeforeInsert()

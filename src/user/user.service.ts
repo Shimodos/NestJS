@@ -1,11 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
+import { LoginUserDto } from './dto/loginUser.dto';
 import { UserEntity } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@app/config';
 import { userResponseInterface } from './types/userResponse.interface';
+import { compare } from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -13,6 +15,7 @@ export class UserService {
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>
   ) {}
 
+  /// Создание нового пользователя
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
     // Проверка на уникальность email и username
     const userByEmail = await this.userRepository.findOne({
@@ -32,6 +35,27 @@ export class UserService {
     Object.assign(newUser, createUserDto);
 
     return await this.userRepository.save(newUser);
+  }
+
+  /// Авторизация пользователя
+  async login(loginUserDto: LoginUserDto): Promise<UserEntity> {
+    const user = await this.userRepository.findOne({
+      where: { email: loginUserDto.email },
+      select: ['id', 'email', 'name', 'password', 'bio', 'image']
+    });
+
+    if (!user) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    const isPasswordCorrect = await compare(loginUserDto.password, user.password);
+    if (!isPasswordCorrect) {
+      throw new HttpException('Invalid password', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    const { password, ...userWithoutPassword } = user;
+
+    return userWithoutPassword as UserEntity;
   }
 
   generateJwt(user: UserEntity): string {
