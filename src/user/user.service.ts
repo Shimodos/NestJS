@@ -8,6 +8,7 @@ import * as jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '@app/config';
 import { userResponseInterface } from './types/userResponse.interface';
 import { compare } from 'bcrypt';
+import { UpdateUserDto } from './dto/upadateUser.dto';
 
 @Injectable()
 export class UserService {
@@ -76,6 +77,18 @@ export class UserService {
       where: { id }
     });
     return user || null;
+  }
+
+  /// Обновление данных пользователя
+  async updateUser(userId: number, updateUserDto: UpdateUserDto): Promise<UserEntity | null> {
+    const user = await this.findById(userId);
+
+    if (!user) {
+      return null;
+    }
+
+    Object.assign(user, updateUserDto);
+    return await this.userRepository.save(user);
   }
 
   /// Формирование ответа с пользователем
