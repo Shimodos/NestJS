@@ -15,6 +15,8 @@ import { LoginUserDto } from './dto/loginUser.dto';
 import { userResponseInterface } from './types/userResponse.interface';
 import { Request } from 'express';
 import { ExpressRequestInterface } from '@app/types/expressRequest.interface';
+import { User } from './decorators/user.decorator';
+import { UserEntity } from './user.entity';
 @Controller()
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -37,10 +39,17 @@ export class UserController {
 
   /// Получение текущего пользователя
   @Get('user')
-  async getCurrentUser(@Req() req: ExpressRequestInterface): Promise<userResponseInterface> {
-    if (!req.user) {
+  async getCurrentUser(
+    // @Req() req: ExpressRequestInterface,
+    @User() user: UserEntity,
+    @User('id') userId: number
+  ): Promise<userResponseInterface> {
+    console.log('user', user);
+    console.log('userId', userId);
+    if (!user) {
       throw new HttpException('User not found', HttpStatus.UNAUTHORIZED);
     }
-    return this.userService.buildUserResponse(req.user);
+
+    return this.userService.buildUserResponse(user);
   }
 }
