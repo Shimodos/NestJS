@@ -58,6 +58,7 @@ export class UserService {
     return userWithoutPassword as UserEntity;
   }
 
+  /// Генерация JWT токена
   generateJwt(user: UserEntity): string {
     return jwt.sign(
       {
@@ -69,6 +70,15 @@ export class UserService {
     );
   }
 
+  /// Поиск пользователя по ID
+  async findById(id: number): Promise<UserEntity | null> {
+    const user = await this.userRepository.findOne({
+      where: { id }
+    });
+    return user || null;
+  }
+
+  /// Формирование ответа с пользователем
   buildUserResponse(user: UserEntity): userResponseInterface {
     return {
       user: {
