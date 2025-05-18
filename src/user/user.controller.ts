@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Req,
+  UseGuards,
   UsePipes,
   ValidationPipe
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { Request } from 'express';
 import { ExpressRequestInterface } from '@app/types/expressRequest.interface';
 import { User } from './decorators/user.decorator';
 import { UserEntity } from './user.entity';
+import { AuthGuard } from './guards/auth.guard';
 @Controller()
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -39,16 +41,13 @@ export class UserController {
 
   /// Получение текущего пользователя
   @Get('user')
+  @UseGuards(AuthGuard)
   async getCurrentUser(
-    // @Req() req: ExpressRequestInterface,
     @User() user: UserEntity,
     @User('id') userId: number
   ): Promise<userResponseInterface> {
     console.log('user', user);
     console.log('userId', userId);
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.UNAUTHORIZED);
-    }
 
     return this.userService.buildUserResponse(user);
   }
