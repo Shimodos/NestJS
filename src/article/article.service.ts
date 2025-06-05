@@ -1,6 +1,7 @@
 import { UserEntity } from '@app/user/user.entity';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateArticleDto } from './dto/createArticle.dto';
+import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleEntity } from './article.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
@@ -58,6 +59,26 @@ export class ArticleService {
     }
 
     return await this.articleRepository.delete({ slug });
+  }
+
+  async updateArticle(slug: string, updateArticleDto: UpdateArticleDto, currentUserId: number): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+
+    // Проверка, что текущий пользователь является автором статьи
+    if (!article) {
+      throw new HttpException(`Article with slug ${slug} not found`, HttpStatus.NOT_FOUND);
+    }
+
+    if (article.author.id !== currentUserId) {
+      throw new HttpException(
+        'You do not have permission to update this article',
+        HttpStatus.FORBIDDEN
+      );
+    }
+
+    Object.assign(article, updateArticleDto);
+
+    return await this.articleRepository.save(article);
   }
 
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
