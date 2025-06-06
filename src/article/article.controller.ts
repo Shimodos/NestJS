@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+  UsePipes,
+  ValidationPipe
+} from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { AuthGuard } from '@app/user/guards/auth.guard';
 import { UserEntity } from '@app/user/user.entity';
@@ -6,10 +18,20 @@ import { User } from '@app/user/decorators/user.decorator';
 import { CreateArticleDto } from './dto/createArticle.dto';
 import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
+import { ArticlesResponseInterface } from './types/ArticlesResponse,interface';
 
 @Controller('articles')
 export class ArticleController {
   constructor(private readonly articleService: ArticleService) {}
+
+  // Получение списка статей
+  @Get()
+  async findAll(
+    @User('id') currentUserId: number,
+    @Query() query: any
+  ): Promise<ArticlesResponseInterface> {
+    return await this.articleService.findAll(currentUserId, query);
+  }
 
   @Post()
   @UseGuards(AuthGuard) // Assuming you have an AuthGuard to protect this route
@@ -31,26 +53,10 @@ export class ArticleController {
   }
 
   // // Удаление отдельной статьи
-  // @Delete(':slug')
-  // @UseGuards(AuthGuard) // Assuming you have an AuthGuard to protect this route
-  // async deleteArticle(
-  //   @User('id') currentUserId: number,
-  //   @Param('slug') slug: string
-  // ): Promise<void> {
-  //   // const article = await this.articleService.findBySlug(slug);
-
-  //   await this.articleService.deleteArticle(slug, currentUserId);
-  // }
-
-  // // Удаление отдельной статьи
   @Delete(':slug')
   @UseGuards(AuthGuard) // Assuming you have an AuthGuard to protect this route
   @UsePipes(new ValidationPipe())
-  async deleteArticle(
-    @User('id') currentUserId: number,
-    @Param('slug') slug: string
-  ) {
-
+  async deleteArticle(@User('id') currentUserId: number, @Param('slug') slug: string) {
     await this.articleService.deleteArticle(slug, currentUserId);
   }
 
@@ -63,8 +69,11 @@ export class ArticleController {
     @Param('slug') slug: string,
     @Body('article') updateArticleDto: UpdateArticleDto
   ): Promise<ArticleResponseInterface> {
-
-    const updatedArticle = await this.articleService.updateArticle(slug, updateArticleDto, currentUserId);
+    const updatedArticle = await this.articleService.updateArticle(
+      slug,
+      updateArticleDto,
+      currentUserId
+    );
 
     return this.articleService.buildArticleResponse(updatedArticle);
   }

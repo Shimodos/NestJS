@@ -4,15 +4,60 @@ import { CreateArticleDto } from './dto/createArticle.dto';
 import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleEntity } from './article.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DataSource, DeleteResult, Repository } from 'typeorm';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
 import slugify from 'slugify';
+import { ArticlesResponseInterface } from './types/ArticlesResponse,interface';
 
 @Injectable()
 export class ArticleService {
   constructor(
-    @InjectRepository(ArticleEntity) private readonly articleRepository: Repository<ArticleEntity>
+    @InjectRepository(ArticleEntity) private readonly articleRepository: Repository<ArticleEntity>,
+    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+    private dataSource: DataSource
   ) {}
+
+  async findAll(currentUserId: number, query: any): Promise<ArticlesResponseInterface> {
+    const queryBuilder = this.dataSource
+      .getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .leftJoinAndSelect('articles.author', 'author');
+
+    queryBuilder.orderBy('articles.createdAt', 'DESC');
+
+    const articlesCount = await queryBuilder.getCount();
+
+    // Фильтрация по тегам
+    if (query.tag) {
+      queryBuilder.andWhere('articles.tagList LIKE :tag', { tag: `%${query.tag}%` });
+    }
+
+    // Пагинация
+    if (query.limit) {
+      queryBuilder.limit(query.limit);
+    }
+
+    if (query.offset) {
+      queryBuilder.offset(query.offset);
+    }
+
+    // Поиск по автору
+    if (query.author) {
+      const author = await this.userRepository.findOne({
+        where: { name: query.author }
+      });
+      if (author) {
+        queryBuilder.andWhere('articles.author.id = :id', { id: author.id });
+      }
+    }
+
+    const articles = await queryBuilder.getMany();
+
+    return {
+      articles,
+      articlesCount
+    };
+  }
 
   async createArticle(
     currentUser: UserEntity,
@@ -61,7 +106,11 @@ export class ArticleService {
     return await this.articleRepository.delete({ slug });
   }
 
-  async updateArticle(slug: string, updateArticleDto: UpdateArticleDto, currentUserId: number): Promise<ArticleEntity> {
+  async updateArticle(
+    slug: string,
+    updateArticleDto: UpdateArticleDto,
+    currentUserId: number
+  ): Promise<ArticleEntity> {
     const article = await this.findBySlug(slug);
 
     // Проверка, что текущий пользователь является автором статьи
