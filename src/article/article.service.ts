@@ -130,6 +130,31 @@ export class ArticleService {
     return await this.articleRepository.save(article);
   }
 
+  async addFavoriteArticle(slug: string, currentUserId: number): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    const user = await this.userRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['favoritedArticles']
+    });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Проверка, что статья уже добавлена в избранное
+    if (user.favoritedArticles.some((favArticle) => favArticle.id === article.id)) {
+      throw new HttpException('Article already favorited', HttpStatus.BAD_REQUEST);
+    }
+
+    user.favoritedArticles.push(article);
+    article.favoritesCount++;
+    // Обновляем количество лайков статьи
+    await this.userRepository.save(user);
+    await this.articleRepository.save(article);
+
+    return article;
+  }
+
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
     return { article };
   }
