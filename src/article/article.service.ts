@@ -32,6 +32,23 @@ export class ArticleService {
       queryBuilder.andWhere('articles.tagList LIKE :tag', { tag: `%${query.tag}%` });
     }
 
+    // Фильтрация по избранным статьям
+    if (query.favorited) {
+      const favoritedUser = await this.userRepository.findOne({
+        where: { name: query.favorited },
+        relations: ['favoritedArticles']
+      });
+
+      if (favoritedUser) {
+        const ids = favoritedUser.favoritedArticles.map((el) => el.id);
+        if (ids.length > 0) {
+          queryBuilder.andWhere('articles.id IN (:...ids)', { ids });
+        } else {
+          queryBuilder.andWhere('1=0');
+        }
+      }
+    }
+
     // Пагинация
     if (query.limit) {
       queryBuilder.limit(query.limit);
@@ -41,10 +58,21 @@ export class ArticleService {
       queryBuilder.offset(query.offset);
     }
 
+    let favoriteIds: number[] = [];
+    if (currentUserId) {
+      const user = await this.userRepository.findOne({
+        where: { id: currentUserId },
+        relations: ['favoritedArticles']
+      });
+      if (user) {
+        favoriteIds = user.favoritedArticles.map((favoritedArticles) => favoritedArticles.id);
+      }
+    }
+
     // Поиск по автору
     if (query.author) {
       const author = await this.userRepository.findOne({
-        where: { name: query.author }
+        where: { username: query.author }
       });
       if (author) {
         queryBuilder.andWhere('articles.author.id = :id', { id: author.id });
@@ -52,9 +80,17 @@ export class ArticleService {
     }
 
     const articles = await queryBuilder.getMany();
+    const articlesWithFavorited = articles.map((article) => {
+      const isFavorited = favoriteIds.includes(article.id);
+
+      return {
+        ...article,
+        isFavorited
+      };
+    });
 
     return {
-      articles,
+      articles: articlesWithFavorited,
       articlesCount
     };
   }
@@ -148,6 +184,33 @@ export class ArticleService {
 
     user.favoritedArticles.push(article);
     article.favoritesCount++;
+    // Обновляем количество лайков статьи
+    await this.userRepository.save(user);
+    await this.articleRepository.save(article);
+
+    return article;
+  }
+
+  async removeFavoriteArticle(slug: string, currentUserId: number): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    const user = await this.userRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['favoritedArticles']
+    });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Проверка, что статья не в избранном
+    if (!user.favoritedArticles.some((favArticle) => favArticle.id === article.id)) {
+      throw new HttpException('Article not favorited', HttpStatus.BAD_REQUEST);
+    }
+
+    user.favoritedArticles = user.favoritedArticles.filter(
+      (favArticle) => favArticle.id !== article.id
+    );
+    article.favoritesCount--;
     // Обновляем количество лайков статьи
     await this.userRepository.save(user);
     await this.articleRepository.save(article);
