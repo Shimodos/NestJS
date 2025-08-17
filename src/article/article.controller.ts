@@ -19,6 +19,7 @@ import { CreateArticleDto } from './dto/createArticle.dto';
 import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
 import { ArticlesResponseInterface } from './types/ArticlesResponse,interface';
+import { ProfileResponseInterface } from '@app/profile/types/profileRespons.interface';
 
 @Controller('articles')
 export class ArticleController {
@@ -31,6 +32,16 @@ export class ArticleController {
     @Query() query: any
   ): Promise<ArticlesResponseInterface> {
     return await this.articleService.findAll(currentUserId, query);
+  }
+
+  // Feed Articles
+  @Get('feed')
+  @UseGuards(AuthGuard)
+  async getUserFeed(
+    @User('id') currentUserId: number,
+    @Query() query: any
+  ): Promise<ArticlesResponseInterface> {
+    return await this.articleService.getUserFeed(currentUserId, query);
   }
 
   @Post()

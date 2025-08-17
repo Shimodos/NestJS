@@ -4,16 +4,18 @@ import { CreateArticleDto } from './dto/createArticle.dto';
 import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleEntity } from './article.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, DeleteResult, Repository } from 'typeorm';
+import { DataSource, DeleteResult, In, Repository } from 'typeorm';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
 import slugify from 'slugify';
 import { ArticlesResponseInterface } from './types/ArticlesResponse,interface';
+import { FollowEntity } from '@app/profile/folow.entity';
 
 @Injectable()
 export class ArticleService {
   constructor(
     @InjectRepository(ArticleEntity) private readonly articleRepository: Repository<ArticleEntity>,
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(FollowEntity) private readonly followRepository: Repository<FollowEntity>,
     private dataSource: DataSource
   ) {}
 
@@ -92,6 +94,43 @@ export class ArticleService {
     return {
       articles: articlesWithFavorited,
       articlesCount
+    };
+  }
+
+  async getUserFeed(currentUserId: number, query: any): Promise<ArticlesResponseInterface> {
+    const follows = await this.followRepository.find({
+      where: { followerId: currentUserId }
+    });
+
+    if (follows.length === 0) {
+      return {
+        articles: [],
+        articlesCount: 0
+      };
+    }
+
+    const followingUserIds = follows.map((follow) => follow.followingId);
+
+    const queryBuilder = this.dataSource
+      .getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .leftJoinAndSelect('articles.author', 'author')
+      .where('articles.author.id IN (:...ids)', { ids: followingUserIds })
+      .orderBy('articles.createdAt', 'DESC');
+
+    const articleCount = await queryBuilder.getCount();
+
+    if (query.limit) {
+      queryBuilder.limit(query.limit);
+    }
+
+    if (query.offset) {
+      queryBuilder.offset(query.offset);
+    }
+
+    return {
+      articles: await queryBuilder.getMany(),
+      articlesCount: articleCount
     };
   }
 
