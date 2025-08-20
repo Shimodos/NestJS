@@ -73,6 +73,7 @@ export class UserService {
   }
 
   /// Генерация JWT токена
+
   generateJwt(user: UserEntity): string {
     return jwt.sign(
       {
