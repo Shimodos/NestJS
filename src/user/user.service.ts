@@ -18,6 +18,7 @@ export class UserService {
 
   /// Создание нового пользователя
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
+    const errorResponse = { errors: {} };
     // Проверка на уникальность email и username
     const userByEmail = await this.userRepository.findOne({
       where: { email: createUserDto.email }
@@ -25,11 +26,20 @@ export class UserService {
     const userByUsername = await this.userRepository.findOne({
       where: { name: createUserDto.name }
     });
+
     if (userByEmail) {
-      throw new HttpException('Email already exists', HttpStatus.UNPROCESSABLE_ENTITY);
+      errorResponse.errors['email'] = 'Email already exists';
+    }
+
+    if (userByUsername) {
+      errorResponse.errors['username'] = 'Username already exists';
+    }
+
+    if (userByEmail) {
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
     if (userByUsername) {
-      throw new HttpException('Username already exists', HttpStatus.UNPROCESSABLE_ENTITY);
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     const newUser = new UserEntity();
@@ -40,18 +50,21 @@ export class UserService {
 
   /// Авторизация пользователя
   async login(loginUserDto: LoginUserDto): Promise<UserEntity> {
+    const errorResponse = {
+      errors: { 'email or password': 'is invalid' }
+    };
     const user = await this.userRepository.findOne({
       where: { email: loginUserDto.email },
       select: ['id', 'email', 'name', 'password', 'bio', 'image']
     });
 
     if (!user) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNPROCESSABLE_ENTITY);
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     const isPasswordCorrect = await compare(loginUserDto.password, user.password);
     if (!isPasswordCorrect) {
-      throw new HttpException('Invalid password', HttpStatus.UNPROCESSABLE_ENTITY);
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     const { password, ...userWithoutPassword } = user;

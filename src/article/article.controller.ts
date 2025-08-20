@@ -8,8 +8,7 @@ import {
   Put,
   Query,
   UseGuards,
-  UsePipes,
-  ValidationPipe
+  UsePipes
 } from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { AuthGuard } from '@app/user/guards/auth.guard';
@@ -20,6 +19,7 @@ import { UpdateArticleDto } from './dto/updateArticleDto.dto';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
 import { ArticlesResponseInterface } from './types/ArticlesResponse,interface';
 import { ProfileResponseInterface } from '@app/profile/types/profileRespons.interface';
+import { BackendValidationPipe } from '@app/shared/pipes/backendValidation.pipe';
 
 @Controller('articles')
 export class ArticleController {
@@ -46,7 +46,7 @@ export class ArticleController {
 
   @Post()
   @UseGuards(AuthGuard) // Assuming you have an AuthGuard to protect this route
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new BackendValidationPipe())
   async create(
     @User() currentUser: UserEntity,
     @Body('article') createArticleDto: CreateArticleDto
@@ -63,10 +63,10 @@ export class ArticleController {
     return this.articleService.buildArticleResponse(article);
   }
 
-  // // Удаление отдельной статьи
+  // Удаление отдельной статьи
   @Delete(':slug')
   @UseGuards(AuthGuard) // Assuming you have an AuthGuard to protect this route
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new BackendValidationPipe())
   async deleteArticle(@User('id') currentUserId: number, @Param('slug') slug: string) {
     await this.articleService.deleteArticle(slug, currentUserId);
   }
@@ -74,7 +74,7 @@ export class ArticleController {
   // Обновление статьи
   @Put(':slug')
   @UseGuards(AuthGuard)
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new BackendValidationPipe())
   async updateArticle(
     @User('id') currentUserId: number,
     @Param('slug') slug: string,
